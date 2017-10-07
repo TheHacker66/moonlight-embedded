@@ -348,8 +348,8 @@ void read_scaling_list(bs_t* b, int* scalingList, int sizeOfScalingList, int* us
     // NOTE need to be able to set useDefaultScalingMatrixFlag when reading, hence passing as pointer
     int lastScale = 8;
     int nextScale = 8;
-    int delta_scale;
-    for( int j = 0; j < sizeOfScalingList; j++ )
+    int delta_scale,j;
+    for( j = 0; j < sizeOfScalingList; j++ )
     {
         if( nextScale != 0 )
         {
@@ -454,12 +454,13 @@ void read_vui_parameters(h264_stream_t* h, bs_t* b)
 //Appendix E.1.2 HRD parameters syntax
 void read_hrd_parameters(h264_stream_t* h, bs_t* b)
 {
+    int SchedSelIdx;
     sps_t* sps = h->sps;
 
     sps->hrd.cpb_cnt_minus1 = bs_read_ue(b);
     sps->hrd.bit_rate_scale = bs_read_u(b, 4);
     sps->hrd.cpb_size_scale = bs_read_u(b, 4);
-    for( int SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
+    for( SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
     {
         sps->hrd.bit_rate_value_minus1[ SchedSelIdx ] = bs_read_ue(b);
         sps->hrd.cpb_size_value_minus1[ SchedSelIdx ] = bs_read_ue(b);
@@ -492,6 +493,7 @@ int read_seq_parameter_set_extension_rbsp(bs_t* b, sps_ext_t* sps_ext) {
 //7.3.2.2 Picture parameter set RBSP syntax
 void read_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i_group,i;
     pps_t* pps = h->pps;
     if( 1 )
     {
@@ -509,14 +511,14 @@ void read_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         pps->slice_group_map_type = bs_read_ue(b);
         if( pps->slice_group_map_type == 0 )
         {
-            for( int i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
             {
                 pps->run_length_minus1[ i_group ] = bs_read_ue(b);
             }
         }
         else if( pps->slice_group_map_type == 2 )
         {
-            for( int i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
             {
                 pps->top_left[ i_group ] = bs_read_ue(b);
                 pps->bottom_right[ i_group ] = bs_read_ue(b);
@@ -532,7 +534,7 @@ void read_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         else if( pps->slice_group_map_type == 6 )
         {
             pps->pic_size_in_map_units_minus1 = bs_read_ue(b);
-            for( int i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
+            for( i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
             {
                 int v = intlog2( pps->num_slice_groups_minus1 + 1 );
                 pps->slice_group_id[ i ] = bs_read_u(b, v);
@@ -563,7 +565,7 @@ void read_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         pps->pic_scaling_matrix_present_flag = bs_read_u1(b);
         if( pps->pic_scaling_matrix_present_flag )
         {
-            for( int i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
+            for( i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
             {
                 pps->pic_scaling_list_present_flag[ i ] = bs_read_u1(b);
                 if( pps->pic_scaling_list_present_flag[ i ] )
@@ -595,9 +597,10 @@ void read_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 //7.3.2.3 Supplemental enhancement information RBSP syntax
 void read_sei_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i = 0;
     if( 1 )
     {
-    for( int i = 0; i < h->num_seis; i++ )
+    for( i = 0; i < h->num_seis; i++ )
     {
         sei_free(h->seis[i]);
     }
@@ -615,7 +618,7 @@ void read_sei_rbsp(h264_stream_t* h, bs_t* b)
 
     if( 0 )
     {
-    for (int i = 0; i < h->num_seis; i++)
+    for (i = 0; i < h->num_seis; i++)
     {
         h->sei = h->seis[i];
         read_sei_message(h, b);
@@ -1235,8 +1238,8 @@ void write_scaling_list(bs_t* b, int* scalingList, int sizeOfScalingList, int* u
     // NOTE need to be able to set useDefaultScalingMatrixFlag when reading, hence passing as pointer
     int lastScale = 8;
     int nextScale = 8;
-    int delta_scale;
-    for( int j = 0; j < sizeOfScalingList; j++ )
+    int delta_scale,j;
+    for( j = 0; j < sizeOfScalingList; j++ )
     {
         if( nextScale != 0 )
         {
@@ -1341,12 +1344,13 @@ void write_vui_parameters(h264_stream_t* h, bs_t* b)
 //Appendix E.1.2 HRD parameters syntax
 void write_hrd_parameters(h264_stream_t* h, bs_t* b)
 {
+    int SchedSelIdx;
     sps_t* sps = h->sps;
 
     bs_write_ue(b, sps->hrd.cpb_cnt_minus1);
     bs_write_u(b, 4, sps->hrd.bit_rate_scale);
     bs_write_u(b, 4, sps->hrd.cpb_size_scale);
-    for( int SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
+    for( SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
     {
         bs_write_ue(b, sps->hrd.bit_rate_value_minus1[ SchedSelIdx ]);
         bs_write_ue(b, sps->hrd.cpb_size_value_minus1[ SchedSelIdx ]);
@@ -1379,6 +1383,7 @@ int write_seq_parameter_set_extension_rbsp(bs_t* b, sps_ext_t* sps_ext) {
 //7.3.2.2 Picture parameter set RBSP syntax
 void write_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i_group,i;
     pps_t* pps = h->pps;
     if( 0 )
     {
@@ -1396,14 +1401,14 @@ void write_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         bs_write_ue(b, pps->slice_group_map_type);
         if( pps->slice_group_map_type == 0 )
         {
-            for( int i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
             {
                 bs_write_ue(b, pps->run_length_minus1[ i_group ]);
             }
         }
         else if( pps->slice_group_map_type == 2 )
         {
-            for( int i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
             {
                 bs_write_ue(b, pps->top_left[ i_group ]);
                 bs_write_ue(b, pps->bottom_right[ i_group ]);
@@ -1419,7 +1424,7 @@ void write_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         else if( pps->slice_group_map_type == 6 )
         {
             bs_write_ue(b, pps->pic_size_in_map_units_minus1);
-            for( int i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
+            for( i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
             {
                 int v = intlog2( pps->num_slice_groups_minus1 + 1 );
                 bs_write_u(b, v, pps->slice_group_id[ i ]);
@@ -1450,7 +1455,7 @@ void write_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         bs_write_u1(b, pps->pic_scaling_matrix_present_flag);
         if( pps->pic_scaling_matrix_present_flag )
         {
-            for( int i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
+            for( i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
             {
                 bs_write_u1(b, pps->pic_scaling_list_present_flag[ i ]);
                 if( pps->pic_scaling_list_present_flag[ i ] )
@@ -1482,9 +1487,10 @@ void write_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 //7.3.2.3 Supplemental enhancement information RBSP syntax
 void write_sei_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i = 0;
     if( 0 )
     {
-    for( int i = 0; i < h->num_seis; i++ )
+    for( i = 0; i < h->num_seis; i++ )
     {
         sei_free(h->seis[i]);
     }
@@ -1502,7 +1508,7 @@ void write_sei_rbsp(h264_stream_t* h, bs_t* b)
 
     if( 1 )
     {
-    for (int i = 0; i < h->num_seis; i++)
+    for (i = 0; i < h->num_seis; i++)
     {
         h->sei = h->seis[i];
         write_sei_message(h, b);
@@ -2122,8 +2128,8 @@ void read_debug_scaling_list(bs_t* b, int* scalingList, int sizeOfScalingList, i
     // NOTE need to be able to set useDefaultScalingMatrixFlag when reading, hence passing as pointer
     int lastScale = 8;
     int nextScale = 8;
-    int delta_scale;
-    for( int j = 0; j < sizeOfScalingList; j++ )
+    int delta_scale,j;
+    for( j = 0; j < sizeOfScalingList; j++ )
     {
         if( nextScale != 0 )
         {
@@ -2228,12 +2234,13 @@ void read_debug_vui_parameters(h264_stream_t* h, bs_t* b)
 //Appendix E.1.2 HRD parameters syntax
 void read_debug_hrd_parameters(h264_stream_t* h, bs_t* b)
 {
+    int SchedSelIdx;
     sps_t* sps = h->sps;
 
     printf("%d.%d: ", b->p - b->start, b->bits_left); sps->hrd.cpb_cnt_minus1 = bs_read_ue(b); printf("sps->hrd.cpb_cnt_minus1: %d \n", sps->hrd.cpb_cnt_minus1); 
     printf("%d.%d: ", b->p - b->start, b->bits_left); sps->hrd.bit_rate_scale = bs_read_u(b, 4); printf("sps->hrd.bit_rate_scale: %d \n", sps->hrd.bit_rate_scale); 
     printf("%d.%d: ", b->p - b->start, b->bits_left); sps->hrd.cpb_size_scale = bs_read_u(b, 4); printf("sps->hrd.cpb_size_scale: %d \n", sps->hrd.cpb_size_scale); 
-    for( int SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
+    for( SchedSelIdx = 0; SchedSelIdx <= sps->hrd.cpb_cnt_minus1; SchedSelIdx++ )
     {
         printf("%d.%d: ", b->p - b->start, b->bits_left); sps->hrd.bit_rate_value_minus1[ SchedSelIdx ] = bs_read_ue(b); printf("sps->hrd.bit_rate_value_minus1[ SchedSelIdx ]: %d \n", sps->hrd.bit_rate_value_minus1[ SchedSelIdx ]); 
         printf("%d.%d: ", b->p - b->start, b->bits_left); sps->hrd.cpb_size_value_minus1[ SchedSelIdx ] = bs_read_ue(b); printf("sps->hrd.cpb_size_value_minus1[ SchedSelIdx ]: %d \n", sps->hrd.cpb_size_value_minus1[ SchedSelIdx ]); 
@@ -2266,6 +2273,7 @@ int read_debug_seq_parameter_set_extension_rbsp(bs_t* b, sps_ext_t* sps_ext) {
 //7.3.2.2 Picture parameter set RBSP syntax
 void read_debug_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i_group,i;
     pps_t* pps = h->pps;
     if( 1 )
     {
@@ -2283,14 +2291,14 @@ void read_debug_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         printf("%d.%d: ", b->p - b->start, b->bits_left); pps->slice_group_map_type = bs_read_ue(b); printf("pps->slice_group_map_type: %d \n", pps->slice_group_map_type); 
         if( pps->slice_group_map_type == 0 )
         {
-            for( int i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group <= pps->num_slice_groups_minus1; i_group++ )
             {
                 printf("%d.%d: ", b->p - b->start, b->bits_left); pps->run_length_minus1[ i_group ] = bs_read_ue(b); printf("pps->run_length_minus1[ i_group ]: %d \n", pps->run_length_minus1[ i_group ]); 
             }
         }
         else if( pps->slice_group_map_type == 2 )
         {
-            for( int i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
+            for( i_group = 0; i_group < pps->num_slice_groups_minus1; i_group++ )
             {
                 printf("%d.%d: ", b->p - b->start, b->bits_left); pps->top_left[ i_group ] = bs_read_ue(b); printf("pps->top_left[ i_group ]: %d \n", pps->top_left[ i_group ]); 
                 printf("%d.%d: ", b->p - b->start, b->bits_left); pps->bottom_right[ i_group ] = bs_read_ue(b); printf("pps->bottom_right[ i_group ]: %d \n", pps->bottom_right[ i_group ]); 
@@ -2306,7 +2314,7 @@ void read_debug_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         else if( pps->slice_group_map_type == 6 )
         {
             printf("%d.%d: ", b->p - b->start, b->bits_left); pps->pic_size_in_map_units_minus1 = bs_read_ue(b); printf("pps->pic_size_in_map_units_minus1: %d \n", pps->pic_size_in_map_units_minus1); 
-            for( int i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
+            for( i = 0; i <= pps->pic_size_in_map_units_minus1; i++ )
             {
                 int v = intlog2( pps->num_slice_groups_minus1 + 1 );
                 printf("%d.%d: ", b->p - b->start, b->bits_left); pps->slice_group_id[ i ] = bs_read_u(b, v); printf("pps->slice_group_id[ i ]: %d \n", pps->slice_group_id[ i ]); 
@@ -2337,7 +2345,7 @@ void read_debug_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
         printf("%d.%d: ", b->p - b->start, b->bits_left); pps->pic_scaling_matrix_present_flag = bs_read_u1(b); printf("pps->pic_scaling_matrix_present_flag: %d \n", pps->pic_scaling_matrix_present_flag); 
         if( pps->pic_scaling_matrix_present_flag )
         {
-            for( int i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
+            for( i = 0; i < 6 + 2* pps->transform_8x8_mode_flag; i++ )
             {
                 printf("%d.%d: ", b->p - b->start, b->bits_left); pps->pic_scaling_list_present_flag[ i ] = bs_read_u1(b); printf("pps->pic_scaling_list_present_flag[ i ]: %d \n", pps->pic_scaling_list_present_flag[ i ]); 
                 if( pps->pic_scaling_list_present_flag[ i ] )
@@ -2369,9 +2377,10 @@ void read_debug_pic_parameter_set_rbsp(h264_stream_t* h, bs_t* b)
 //7.3.2.3 Supplemental enhancement information RBSP syntax
 void read_debug_sei_rbsp(h264_stream_t* h, bs_t* b)
 {
+    int i = 0;
     if( 1 )
     {
-    for( int i = 0; i < h->num_seis; i++ )
+    for( i = 0; i < h->num_seis; i++ )
     {
         sei_free(h->seis[i]);
     }
@@ -2389,7 +2398,7 @@ void read_debug_sei_rbsp(h264_stream_t* h, bs_t* b)
 
     if( 0 )
     {
-    for (int i = 0; i < h->num_seis; i++)
+    for (i = 0; i < h->num_seis; i++)
     {
         h->sei = h->seis[i];
         read_debug_sei_message(h, b);

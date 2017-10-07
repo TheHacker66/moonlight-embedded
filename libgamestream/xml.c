@@ -115,7 +115,8 @@ static void XMLCALL _xml_end_mode_element(void *userData, const char *name) {
 static void XMLCALL _xml_start_status_element(void *userData, const char *name, const char **atts) {
   if (strcmp("root", name) == 0) {
     int* status = (int*) userData;
-    for (int i = 0; atts[i]; i += 2) {
+    int i = 0;
+    for (i = 0; atts[i]; i += 2) {
       if (strcmp("status_code", atts[i]) == 0)
         *status = atoi(atts[i + 1]);
       else if (*status != STATUS_OK && strcmp("status_message", atts[i]) == 0) {
