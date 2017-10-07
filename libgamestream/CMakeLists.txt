@@ -4,7 +4,7 @@ set_property(GLOBAL PROPERTY C_STANDARD 99)
 find_package(LibUUID REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
-find_package(OpenSSL 1.0.2 REQUIRED)
+find_package(OpenSSL 1.0.1 REQUIRED)
 find_package(EXPAT REQUIRED)
 
 pkg_check_modules(AVAHI REQUIRED avahi-client)
