@@ -96,7 +96,8 @@ static bool grabbingDevices;
 static bool (*handler) (struct input_event*, struct input_device*);
 
 static int evdev_get_map_key(int* map, int length, int value) {
-  for (int i = 0; i < length; i++) {
+  int i;
+  for (i = 0; i < length; i++) {
     if (value == map[i])
       return i;
   }
@@ -165,6 +166,7 @@ static char evdev_convert_value_byte(struct input_event *ev, struct input_device
 }
 
 static bool evdev_handle_event(struct input_event *ev, struct input_device *dev) {
+  int i;
   bool gamepadModified = false;
 
   switch (ev->type) {
@@ -180,7 +182,7 @@ static bool evdev_handle_event(struct input_event *ev, struct input_device *dev)
     }
     if (dev->gamepadModified) {
       if (dev->controllerId < 0) {
-        for (int i = 0; i < 4; i++) {
+        for (i = 0; i < 4; i++) {
           if ((assignedControllerIds & (1 << i)) == 0) {
             assignedControllerIds |= (1 << i);
             dev->controllerId = i;
@@ -395,14 +397,16 @@ static bool evdev_handle_mapping_event(struct input_event *ev, struct input_devi
 }
 
 static void evdev_drain(void) {
-  for (int i = 0; i < numDevices; i++) {
+  int i;
+  for (i = 0; i < numDevices; i++) {
     struct input_event ev;
     while (libevdev_next_event(devices[i].dev, LIBEVDEV_READ_FLAG_NORMAL, &ev) >= 0);
   }
 }
 
 static int evdev_handle(int fd) {
-  for (int i=0;i<numDevices;i++) {
+  int i;
+  for (i=0;i<numDevices;i++) {
     if (devices[i].fd = fd) {
       int rc;
       struct input_event ev;
@@ -445,7 +449,8 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose) {
 
   char str_guid[33];
   char* buf = str_guid;
-  for (int i = 0; i < 16; i++)
+  int i;
+  for (i = 0; i < 16; i++)
     buf += sprintf(buf, "%02x", ((unsigned char*) guid)[i]);
 
   struct mapping* default_mapping = NULL;
@@ -497,17 +502,17 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose) {
   memset(&devices[dev].abs_map, -1, sizeof(devices[dev].abs_map));
 
   int nbuttons = 0;
-  for (int i = BTN_JOYSTICK; i < KEY_MAX; ++i) {
+  for (i = BTN_JOYSTICK; i < KEY_MAX; ++i) {
     if (libevdev_has_event_code(devices[dev].dev, EV_KEY, i))
       devices[dev].key_map[i - BTN_MISC] = nbuttons++;
   }
-  for (int i = BTN_MISC; i < BTN_JOYSTICK; ++i) {
+  for (i = BTN_MISC; i < BTN_JOYSTICK; ++i) {
     if (libevdev_has_event_code(devices[dev].dev, EV_KEY, i))
       devices[dev].key_map[i - BTN_MISC] = nbuttons++;
   }
 
   int naxes = 0;
-  for (int i = 0; i < ABS_MAX; ++i) {
+  for (i = 0; i < ABS_MAX; ++i) {
     /* Skip hats */
     if (i == ABS_HAT0X)
       i = ABS_HAT3Y;
@@ -543,7 +548,8 @@ void evdev_start() {
   // code looks for. For this reason, we wait to grab until
   // we're ready to take input events. Ctrl+C works up until
   // this point.
-  for (int i = 0; i < numDevices; i++) {
+  int i;
+  for (i = 0; i < numDevices; i++) {
     if (ioctl(devices[i].fd, EVIOCGRAB, 1) < 0) {
       fprintf(stderr, "EVIOCGRAB failed with error %d\n", errno);
     }

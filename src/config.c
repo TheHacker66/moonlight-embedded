@@ -239,6 +239,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
 
   char *line = NULL;
   size_t len = 0;
+  int i = 0;
 
   while (getline(&line, &len, fd) != -1) {
     char *key = NULL, *value = NULL;
@@ -250,7 +251,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
       } else if (strcmp(key, "localaudio") == 0) {
         config->localaudio = strcmp("true", value) == 0;
       } else {
-        for (int i=0;long_options[i].name != NULL;i++) {
+        for (i=0;long_options[i].name != NULL;i++) {
           if (strcmp(long_options[i].name, key) == 0) {
             if (long_options[i].has_arg == required_argument)
               parse_argument(long_options[i].val, value, config);

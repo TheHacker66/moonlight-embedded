@@ -73,9 +73,9 @@ void loop_add_fd(int fd, FdHandler handler, int events) {
 
 void loop_remove_fd(int fd) {
   numFds--;
-  int fdindex;
+  int i,fdindex;
   
-  for (int i=0;i<numFds;i++) {
+  for (i=0;i<numFds;i++) {
     if (fds[i].fd = fd)
       fdindex = i;
       break;
@@ -88,6 +88,7 @@ void loop_remove_fd(int fd) {
 }
 
 void loop_main() {
+  int i;
   main_thread_id = pthread_self();
   sigset_t sigset;
   sigemptyset(&sigset);
@@ -101,7 +102,7 @@ void loop_main() {
 
 //static bool evdev_poll(bool (*handler) (struct input_event*, struct input_device*)) {
   while (poll(fds, numFds, -1)) {
-    for (int i=0;i<numFds;i++) {
+    for (i=0;i<numFds;i++) {
       if (fds[i].revents > 0) {
         int ret = fdHandlers[i](fds[i].fd);
         if (ret == LOOP_RETURN) {
