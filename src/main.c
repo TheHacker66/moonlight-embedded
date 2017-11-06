@@ -61,8 +61,7 @@ static void applist(PSERVER_DATA server) {
     return;
   }
 
-  int i;
-  for (i = 1;list != NULL;i++) {
+  for (int i = 1;list != NULL;i++) {
     printf("%d. %s\n", i, list->name);
     list = list->next;
   }
@@ -286,8 +285,7 @@ int main(int argc, char* argv[]) {
         mappings = map;
       }
 
-      int i;
-      for (i=0;i<config.inputsCount;i++) {
+      for (int i=0;i<config.inputsCount;i++) {
         if (config.debug_level > 0)
           printf("Add input %s...\n", config.inputs[i]);
 

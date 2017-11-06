@@ -93,8 +93,7 @@ static int load_unique_id(const char* keyDirectory) {
   if (fd == NULL) {
     unsigned char unique_data[UNIQUEID_BYTES];
     RAND_bytes(unique_data, UNIQUEID_BYTES);
-    int i = 0;
-    for (i = 0; i < UNIQUEID_BYTES; i++) {
+    for (int i = 0; i < UNIQUEID_BYTES; i++) {
       sprintf(unique_id + (i * 2), "%02x", unique_data[i]);
     }
     fd = fopen(uniqueFilePath, "w");
@@ -284,8 +283,7 @@ static int load_server_status(PSERVER_DATA server) {
 }
 
 static void bytes_to_hex(unsigned char *in, char *out, size_t len) {
-  int i = 0;
-  for (i = 0; i < len; i++) {
+  for (int i = 0; i < len; i++) {
     sprintf(out + i * 2, "%02x", in[i]);
   }
   out[len * 2] = 0;
@@ -438,8 +436,7 @@ int gs_pair(PSERVER_DATA server, char* pin) {
   }
 
   char plaincert[8192];
-  int count = 0;
-  for (count = 0; count < strlen(result); count += 2) {
+  for (int count = 0; count < strlen(result); count += 2) {
     sscanf(&result[count], "%2hhx", &plaincert[count / 2]);
   }
   plaincert[strlen(result)/2] = '\0';
@@ -494,12 +491,11 @@ int gs_pair(PSERVER_DATA server, char* pin) {
 
   char challenge_response_data_enc[48];
   char challenge_response_data[48];
-  int i = 0;
-  for (count = 0; count < strlen(result); count += 2) {
+  for (int count = 0; count < strlen(result); count += 2) {
     sscanf(&result[count], "%2hhx", &challenge_response_data_enc[count / 2]);
   }
 
-  for (i = 0; i < 48; i += 16) {
+  for (int i = 0; i < 48; i += 16) {
     AES_decrypt(&challenge_response_data_enc[i], &challenge_response_data[i], &dec_key);
   }
 
@@ -518,7 +514,7 @@ int gs_pair(PSERVER_DATA server, char* pin) {
   else
     SHA1(challenge_response, 16 + 256 + 16, challenge_response_hash);
 
-  for (i = 0; i < 32; i += 16) {
+  for (int i = 0; i < 32; i += 16) {
     AES_encrypt(&challenge_response_hash[i], &challenge_response_hash_enc[i], &enc_key);
   }
   bytes_to_hex(challenge_response_hash_enc, challenge_response_hex, 32);
@@ -550,7 +546,7 @@ int gs_pair(PSERVER_DATA server, char* pin) {
   }
 
   char pairing_secret[16 + 256];
-  for (count = 0; count < strlen(result); count += 2) {
+  for (int count = 0; count < strlen(result); count += 2) {
     sscanf(&result[count], "%2hhx", &pairing_secret[count / 2]);
   }
 

@@ -39,9 +39,8 @@ h264_stream_t* h264_new()
     h->nal = (nal_t*)calloc(1, sizeof(nal_t));
 
     // initialize tables
-    int i = 0;
-    for ( i = 0; i < 32; i++ ) { h->sps_table[i] = (sps_t*)calloc(1, sizeof(sps_t)); }
-    for ( i = 0; i < 256; i++ ) { h->pps_table[i] = (pps_t*)calloc(1, sizeof(pps_t)); }
+    for ( int i = 0; i < 32; i++ ) { h->sps_table[i] = (sps_t*)calloc(1, sizeof(sps_t)); }
+    for ( int i = 0; i < 256; i++ ) { h->pps_table[i] = (pps_t*)calloc(1, sizeof(pps_t)); }
 
     h->sps = h->sps_table[0];
     h->pps = h->pps_table[0];
@@ -64,14 +63,13 @@ void h264_free(h264_stream_t* h)
 {
     free(h->nal);
 
-    int i = 0;
-    for ( i = 0; i < 32; i++ ) { free( h->sps_table[i] ); }
-    for ( i = 0; i < 256; i++ ) { free( h->pps_table[i] ); }
+    for ( int i = 0; i < 32; i++ ) { free( h->sps_table[i] ); }
+    for ( int i = 0; i < 256; i++ ) { free( h->pps_table[i] ); }
 
     free(h->aud);
     if(h->seis != NULL)
     {
-        for( i = 0; i < h->num_seis; i++ )
+        for( int i = 0; i < h->num_seis; i++ )
         {
             sei_t* sei = h->seis[i];
             sei_free(sei);
