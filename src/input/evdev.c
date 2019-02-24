@@ -55,6 +55,7 @@ struct input_abs_parms {
 
 struct input_device {
   struct libevdev *dev;
+  bool is_keyboard;
   struct mapping* map;
   int key_map[KEY_MAX];
   int abs_map[ABS_MAX];
@@ -63,6 +64,7 @@ struct input_device {
   char modifiers;
   __s32 mouseDeltaX, mouseDeltaY, mouseScroll;
   short controllerId;
+  int haptic_effect_id;
   int buttonFlags;
   char leftTrigger, rightTrigger;
   short leftStickX, leftStickY;
@@ -93,7 +95,7 @@ static bool grabbingDevices;
 
 int evdev_gamepads = 0;
 
-#define QUIT_MODIFIERS (MODIFIER_SHIFT|MODIFIER_ALT|MODIFIER_CTRL)
+#define ACTION_MODIFIERS (MODIFIER_SHIFT|MODIFIER_ALT|MODIFIER_CTRL)
 #define QUIT_KEY KEY_Q
 #define QUIT_BUTTONS (PLAY_FLAG|BACK_FLAG|LB_FLAG|RB_FLAG)
 
@@ -224,7 +226,7 @@ static bool evdev_handle_event(struct input_event *ev, struct input_device *dev)
       }
 
       // Quit the stream if all the required quit keys are down
-      if ((dev->modifiers & QUIT_MODIFIERS) == QUIT_MODIFIERS &&
+      if ((dev->modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS &&
           ev->code == QUIT_KEY && ev->value != 0) {
         return false;
       }
@@ -245,6 +247,12 @@ static bool evdev_handle_event(struct input_event *ev, struct input_device *dev)
         break;
       case BTN_RIGHT:
         mouseCode = BUTTON_RIGHT;
+        break;
+      case BTN_SIDE:
+        mouseCode = BUTTON_X1;
+        break;
+      case BTN_EXTRA:
+        mouseCode = BUTTON_X2;
         break;
       default:
         gamepadModified = true;
@@ -520,6 +528,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose) {
   devices[dev].map = mappings;
   memset(&devices[dev].key_map, -2, sizeof(devices[dev].key_map));
   memset(&devices[dev].abs_map, -2, sizeof(devices[dev].abs_map));
+  devices[dev].is_keyboard = is_keyboard;
 
   int nbuttons = 0;
   for (int i = BTN_JOYSTICK; i < KEY_MAX; ++i) {
@@ -541,6 +550,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose) {
   }
 
   devices[dev].controllerId = -1;
+  devices[dev].haptic_effect_id = -1;
 
   if (devices[dev].map != NULL) {
     bool valid = evdev_init_parms(&devices[dev], &(devices[dev].xParms), devices[dev].map->abs_leftx);
@@ -553,7 +563,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose) {
       fprintf(stderr, "Mapping for %s (%s) on %s is incorrect\n", name, str_guid, device);
   }
 
-  if (grabbingDevices) {
+  if (grabbingDevices && is_keyboard) {
     if (ioctl(fd, EVIOCGRAB, 1) < 0) {
       fprintf(stderr, "EVIOCGRAB failed with error %d\n", errno);
     }
@@ -636,7 +646,7 @@ void evdev_map(char* device) {
   
   struct mapping map;
   strncpy(map.name, libevdev_get_name(evdev), sizeof(map.name));
-  strncpy(map.guid, str_guid, sizeof(map.name));
+  strncpy(map.guid, str_guid, sizeof(map.guid));
 
   libevdev_free(evdev);
   close(fd);
@@ -680,7 +690,7 @@ void evdev_start() {
   // we're ready to take input events. Ctrl+C works up until
   // this point.
   for (int i = 0; i < numDevices; i++) {
-    if (ioctl(devices[i].fd, EVIOCGRAB, 1) < 0) {
+    if (devices[i].is_keyboard && ioctl(devices[i].fd, EVIOCGRAB, 1) < 0) {
       fprintf(stderr, "EVIOCGRAB failed with error %d\n", errno);
     }
   }
@@ -697,4 +707,41 @@ void evdev_stop() {
 
 void evdev_init() {
   handler = evdev_handle_event;
+}
+
+static struct input_device* evdev_get_input_device(unsigned short controller_id) {
+  for (int i=0; i<numDevices; i++)
+    if (devices[i].controllerId == controller_id)
+      return &devices[i];
+
+  return NULL;
+}
+
+void evdev_rumble(unsigned short controller_id, unsigned short low_freq_motor, unsigned short high_freq_motor) {
+  struct input_device* device = evdev_get_input_device(controller_id);
+  if (!device)
+    return;
+
+  if (device->haptic_effect_id >= 0) {
+    ioctl(device->fd, EVIOCRMFF, device->haptic_effect_id);
+    device->haptic_effect_id = -1;
+  }
+
+  if (low_freq_motor == 0 && high_freq_motor == 0)
+    return;
+
+  struct ff_effect effect = {0};
+  effect.type = FF_RUMBLE;
+  effect.id = -1;
+  effect.replay.length = USHRT_MAX;
+  effect.u.rumble.strong_magnitude = low_freq_motor;
+  effect.u.rumble.weak_magnitude = high_freq_motor;
+  if (ioctl(device->fd, EVIOCSFF, &effect) == -1)
+    return;
+
+  struct input_event event = {0};
+  event.type = EV_FF;
+  event.code = effect.id;
+  write(device->fd, (const void*) &event, sizeof(event));
+  device->haptic_effect_id = effect.id;
 }
