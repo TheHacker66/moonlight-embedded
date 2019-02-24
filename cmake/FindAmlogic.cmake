@@ -7,13 +7,13 @@ mark_as_advanced(AMLOGIC_INCLUDE_DIR)
 find_library(AMAVUTILS_LIBRARY
   NAMES libamavutils.so
   DOC "Path to Amlogic Audio Video Utils Library"
-  PATHS /usr/lib/aml_libs /usr/local/lib /usr/lib)
+  PATHS /usr/osmc/lib/)
 mark_as_advanced(AMAVUTILS_LIBRARY)
 
 find_library(AMADEC_LIBRARY
   NAMES libamadec.so
   DOC "Path to Amlogic Audio Decoder Library"
-  PATHS /usr/lib/aml_libs /usr/local/lib /usr/lib)
+  PATHS /usr/osmc/lib)
 mark_as_advanced(AMADEC_LIBRARY)
 
 find_library(AMCODEC_LIBRARY
