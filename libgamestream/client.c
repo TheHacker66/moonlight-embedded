@@ -45,12 +45,6 @@
 #define UNIQUEID_BYTES 8
 #define UNIQUEID_CHARS (UNIQUEID_BYTES*2)
 
-#define CHANNEL_COUNT_STEREO 2
-#define CHANNEL_COUNT_51_SURROUND 6
-
-#define CHANNEL_MASK_STEREO 0x3
-#define CHANNEL_MASK_51_SURROUND 0xFC
-
 static char unique_id[UNIQUEID_CHARS+1];
 static X509 *cert;
 static char cert_hex[4096];
@@ -345,24 +339,24 @@ static bool verifySignature(const char *data, int dataLength, char *signature, i
     BIO* bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, cert);
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-    
+
     BIO_free(bio);
-    
+
     if (!x509) {
         return false;
     }
-    
+
     EVP_PKEY* pubKey = X509_get_pubkey(x509);
     EVP_MD_CTX *mdctx = NULL;
     mdctx = EVP_MD_CTX_create();
     EVP_DigestVerifyInit(mdctx, NULL, EVP_sha256(), NULL, pubKey);
     EVP_DigestVerifyUpdate(mdctx, data, dataLength);
     int result = EVP_DigestVerifyFinal(mdctx, signature, signatureLength);
-    
+
     X509_free(x509);
     EVP_PKEY_free(pubKey);
     EVP_MD_CTX_destroy(mdctx);
-    
+
     return result > 0;
 }
 
@@ -618,7 +612,7 @@ int gs_pair(PSERVER_DATA server, char* pin) {
   cleanup:
   if (ret != GS_OK)
     gs_unpair(server);
-  
+
   if (result != NULL)
     free(result);
 
@@ -658,15 +652,21 @@ int gs_start_app(PSERVER_DATA server, STREAM_CONFIGURATION *config, int appId, b
 
   PDISPLAY_MODE mode = server->modes;
   bool correct_mode = false;
+  bool supported_resolution = false;
   while (mode != NULL) {
-    if (mode->width == config->width && mode->height == config->height && mode->refresh == config->fps)
-      correct_mode = true;
+    if (mode->width == config->width && mode->height == config->height) {
+      supported_resolution = true;
+      if (mode->refresh == config->fps)
+        correct_mode = true;
+    }
 
     mode = mode->next;
   }
 
   if (!correct_mode && !server->unsupported)
     return GS_NOT_SUPPORTED_MODE;
+  else if (sops && !supported_resolution)
+    return GS_NOT_SUPPORTED_SOPS_RESOLUTION;
 
   if (config->height >= 2160 && !server->supports4K)
     return GS_NOT_SUPPORTED_4K;
@@ -686,12 +686,16 @@ int gs_start_app(PSERVER_DATA server, STREAM_CONFIGURATION *config, int appId, b
 
   uuid_generate_random(uuid);
   uuid_unparse(uuid, uuid_str);
+  int surround_info = SURROUNDAUDIOINFO_FROM_AUDIO_CONFIGURATION(config->audioConfiguration);
   if (server->currentGame == 0) {
-    int channelCounnt = config->audioConfiguration == AUDIO_CONFIGURATION_STEREO ? CHANNEL_COUNT_STEREO : CHANNEL_COUNT_51_SURROUND;
-    int mask = config->audioConfiguration == AUDIO_CONFIGURATION_STEREO ? CHANNEL_MASK_STEREO : CHANNEL_MASK_51_SURROUND;
-    snprintf(url, sizeof(url), "https://%s:47984/launch?uniqueid=%s&uuid=%s&appid=%d&mode=%dx%dx%d&additionalStates=1&sops=%d&rikey=%s&rikeyid=%d&localAudioPlayMode=%d&surroundAudioInfo=%d&remoteControllersBitmap=%d&gcmap=%d", server->serverInfo.address, unique_id, uuid_str, appId, config->width, config->height, config->fps, sops, rikey_hex, rikeyid, localaudio, (mask << 16) + channelCounnt, gamepad_mask, gamepad_mask);
+    // Using an FPS value over 60 causes SOPS to default to 720p60,
+    // so force it to 0 to ensure the correct resolution is set. We
+    // used to use 60 here but that locked the frame rate to 60 FPS
+    // on GFE 3.20.3.
+    int fps = config->fps > 60 ? 0 : config->fps;
+    snprintf(url, sizeof(url), "https://%s:47984/launch?uniqueid=%s&uuid=%s&appid=%d&mode=%dx%dx%d&additionalStates=1&sops=%d&rikey=%s&rikeyid=%d&localAudioPlayMode=%d&surroundAudioInfo=%d&remoteControllersBitmap=%d&gcmap=%d", server->serverInfo.address, unique_id, uuid_str, appId, config->width, config->height, fps, sops, rikey_hex, rikeyid, localaudio, surround_info, gamepad_mask, gamepad_mask);
   } else
-    snprintf(url, sizeof(url), "https://%s:47984/resume?uniqueid=%s&uuid=%s&rikey=%s&rikeyid=%d", server->serverInfo.address, unique_id, uuid_str, rikey_hex, rikeyid);
+    snprintf(url, sizeof(url), "https://%s:47984/resume?uniqueid=%s&uuid=%s&rikey=%s&rikeyid=%d&surroundAudioInfo=%d", server->serverInfo.address, unique_id, uuid_str, rikey_hex, rikeyid, surround_info);
 
   if ((ret = http_request(url, data)) == GS_OK)
     server->currentGame = appId;

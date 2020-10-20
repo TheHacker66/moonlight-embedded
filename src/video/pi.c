@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Video decode on Raspberry Pi using OpenMAX IL though the ilcient helper library
 // Based upon video decode example from the Raspberry Pi firmware
 
+#include "video.h"
+
 #include <Limelight.h>
 
 #include <sps.h>
@@ -142,6 +144,29 @@ static int decoder_renderer_setup(int videoFormat, int width, int height, int re
     exit(EXIT_FAILURE);
   }
 
+  OMX_CONFIG_ROTATIONTYPE rotationType;
+  memset(&rotationType, 0, sizeof(OMX_CONFIG_ROTATIONTYPE));
+  rotationType.nSize = sizeof(OMX_CONFIG_ROTATIONTYPE);
+  rotationType.nVersion.nVersion = OMX_VERSION;
+  rotationType.nPortIndex = 90;
+  int displayRotation = drFlags & DISPLAY_ROTATE_MASK;
+  switch (displayRotation) {
+  case DISPLAY_ROTATE_90:
+    rotationType.nRotation = 90;
+    break;
+  case DISPLAY_ROTATE_180:
+    rotationType.nRotation = 180;
+    break;
+  case DISPLAY_ROTATE_270:
+    rotationType.nRotation = 270;
+    break;
+  }
+
+  if(OMX_SetParameter(ILC_GET_HANDLE(video_render), OMX_IndexConfigCommonRotate, &rotationType) != OMX_ErrorNone) {
+    fprintf(stderr, "Failed to set video rotation\n");
+    exit(EXIT_FAILURE);
+  }
+
   OMX_PARAM_PORTDEFINITIONTYPE port;
 
   memset(&port, 0, sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
@@ -209,7 +234,6 @@ static void decoder_renderer_cleanup() {
 static int decoder_renderer_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   OMX_BUFFERHEADERTYPE *buf = NULL;
 
-  gs_sps_fix(decodeUnit, GS_SPS_BITSTREAM_FIXUP);
   PLENTRY entry = decodeUnit->bufferList;
   while (entry != NULL) {
     if (buf == NULL) {
@@ -226,8 +250,12 @@ static int decoder_renderer_submit_decode_unit(PDECODE_UNIT decodeUnit) {
       }
     }
 
-    memcpy(buf->pBuffer + buf->nFilledLen, entry->data, entry->length);
-    buf->nFilledLen += entry->length;
+    if (entry->bufferType == BUFFER_TYPE_SPS)
+      gs_sps_fix(entry, GS_SPS_BITSTREAM_FIXUP, buf->pBuffer, &buf->nFilledLen);
+    else {
+      memcpy(buf->pBuffer + buf->nFilledLen, entry->data, entry->length);
+      buf->nFilledLen += entry->length;
+    }
 
     if (entry->bufferType != BUFFER_TYPE_PICDATA || entry->next == NULL || entry->next->bufferType != BUFFER_TYPE_PICDATA) {
       if(port_settings_changed == 0 && ((buf->nFilledLen > 0 && ilclient_remove_event(video_decode, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) || (buf->nFilledLen == 0 && ilclient_wait_for_event(video_decode, OMX_EventPortSettingsChanged, 131, 0, 0, 1, ILCLIENT_EVENT_ERROR | ILCLIENT_PARAMETER_CHANGED, 10000) == 0))) {

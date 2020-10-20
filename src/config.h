@@ -39,14 +39,16 @@ typedef struct _CONFIGURATION {
   bool sops;
   bool localaudio;
   bool fullscreen;
+  int rotate;
   bool unsupported;
   bool quitappafter;
+  bool viewonly;
   char* inputs[MAX_INPUTS];
   int inputsCount;
   enum codecs codec;
 } CONFIGURATION, *PCONFIGURATION;
 
-bool inputAdded;
+extern bool inputAdded;
 
 bool config_file_parse(char* filename, PCONFIGURATION config);
 void config_parse(int argc, char* argv[], PCONFIGURATION config);
