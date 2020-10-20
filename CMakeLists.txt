@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 project(moonlight-embedded VERSION 2.4.10 LANGUAGES C)
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 SET(CMAKE_C_STANDARD 99)
+set(CMAKE_C_FLAGS "-Wl,-rpath=/usr/osmc/lib -L/usr/osmc/lib")
 include(${CMAKE_ROOT}/Modules/GNUInstallDirs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/generate_version_header.cmake)
 
