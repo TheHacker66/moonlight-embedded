@@ -99,6 +99,7 @@ int aml_setup(int videoFormat, int width, int height, int redrawRate, void* cont
 
 void aml_cleanup() {
   codec_close(&codecParam);
+  free(frame_buffer);
 }
 
 int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
