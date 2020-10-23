@@ -20,3 +20,5 @@
 #include <stdbool.h>
 
 int blank_fb(char *path, bool clear);
+
+int set_disable_video_flag(char *path, bool disabled);

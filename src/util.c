@@ -38,3 +38,18 @@ int blank_fb(char *path, bool clear) {
   } else
     return -1;
 }
+
+
+int set_disable_video_flag(char *path, bool disabled) {
+  int fd = open(path, O_RDWR);
+
+  if(fd >= 0) {
+    int ret = write(fd, disabled ? "1" : "0", 1);
+    if (ret < 0)
+      fprintf(stderr, "Failed to set disable_video flag %s: %d\n", path, ret);
+
+    close(fd);
+    return 0;
+  } else
+    return -1;
+}

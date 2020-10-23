@@ -106,6 +106,9 @@ void platform_start(enum platform system) {
   case AML:
     blank_fb("/sys/class/graphics/fb0/blank", true);
     blank_fb("/sys/class/graphics/fb1/blank", true);
+
+    // set disable_video flag to 0
+    set_disable_video_flag("/sys/class/video/disable_video", false);
     break;
   #endif
   #if defined(HAVE_PI) | defined(HAVE_MMAL)
@@ -122,6 +125,9 @@ void platform_stop(enum platform system) {
   case AML:
     blank_fb("/sys/class/graphics/fb0/blank", false);
     blank_fb("/sys/class/graphics/fb1/blank", false);
+
+    // set disable_video flag to 1
+    set_disable_video_flag("/sys/class/video/disable_video", true);
     break;
   #endif
   #if defined(HAVE_PI) | defined(HAVE_MMAL)
