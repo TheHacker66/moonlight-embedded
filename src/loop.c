@@ -18,7 +18,7 @@
  */
 
 #include "loop.h"
-
+#include "logging.h"
 #include "connection.h"
 
 #include <sys/stat.h>
@@ -62,7 +62,7 @@ void loop_add_fd(int fd, FdHandler handler, int events) {
   }
 
   if (fds == NULL || fdHandlers == NULL) {
-    fprintf(stderr, "Not enough memory\n");
+    _moonlight_log(ERR, "Not enough memory\n");
     exit(EXIT_FAILURE);
   }
 

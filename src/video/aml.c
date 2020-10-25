@@ -31,6 +31,7 @@
 #include <codec.h>
 #include <errno.h>
 #include <string.h>
+#include "../logging.h"
 
 #define SYNC_OUTSIDE 0x02
 #define UCODE_IP_ONLY_PARAM 0x08
@@ -68,13 +69,13 @@ int aml_setup(int videoFormat, int width, int height, int redrawRate, void* cont
       codecParam.am_sysinfo.format = VIDEO_DEC_FORMAT_HEVC;
       break;
     default:
-      printf("Video format not supported\n");
+      _moonlight_log(ERR, "Video format not supported\n");
       return -1;
   }
   
   frame_buffer = malloc(DECODER_BUFFER_SIZE);
   if (frame_buffer == NULL) {
-    fprintf(stderr, "Not enough memory to initialize frame buffer\n");
+    _moonlight_log(ERR, "Not enough memory to initialize frame buffer\n");
     return -2;
   }
   
@@ -85,12 +86,12 @@ int aml_setup(int videoFormat, int width, int height, int redrawRate, void* cont
   
   int ret;
   if ((ret = codec_init(&codecParam)) != 0) {
-    fprintf(stderr, "codec_init error: %x\n", ret);
+    _moonlight_log(ERR, "codec_init error: %x\n", ret);
     return -2;
   }
   
   if ((ret = codec_set_freerun_mode(&codecParam, 1)) != 0) {
-    fprintf(stderr, "Can't set Freerun mode: %x\n", ret);
+    _moonlight_log(ERR, "Can't set Freerun mode: %x\n", ret);
     return -2;
   }
   
@@ -115,12 +116,12 @@ int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
       api = codec_write(&codecParam, frame_buffer, length);
       if (api < 0) {
         if (errno != EAGAIN) {
-          fprintf(stderr, "codec_write error: %x %d\n", api, errno);
+          _moonlight_log(ERR, "codec_write error: %x %d\n", api, errno);
           codec_reset(&codecParam);
           result = DR_NEED_IDR;
           break;
         } else {
-          fprintf(stderr, "EAGAIN triggered, trying again...\n");
+          _moonlight_log(ERR, "EAGAIN triggered, trying again...\n");
           continue;
         }
       }
@@ -128,7 +129,7 @@ int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     }
     
   } else {
-    fprintf(stderr, "Video decode buffer too small\n");
+    _moonlight_log(ERR, "Video decode buffer too small\n");
     exit(1);
   }
   return result;

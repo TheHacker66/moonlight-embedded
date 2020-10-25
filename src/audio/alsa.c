@@ -20,10 +20,11 @@
 #include "audio.h"
 
 #include <stdio.h>
+#include "../logging.h"
 #include <opus_multistream.h>
 #include <alsa/asoundlib.h>
 
-#define CHECK_RETURN(f) if ((rc = f) < 0) { printf("Alsa error code %d\n", rc); return -1; }
+#define CHECK_RETURN(f) if ((rc = f) < 0) { _moonlight_log(ERR, "Alsa error code %d\n", rc); return -1; }
 
 static snd_pcm_t *handle;
 static OpusMSDecoder* decoder;
@@ -104,11 +105,11 @@ static void alsa_renderer_decode_and_play_sample(char* data, int length) {
       snd_pcm_recover(handle, rc, 1);
 
     if (rc<0)
-      printf("Alsa error from writei: %d\n", rc);
+      _moonlight_log(ERR, "Alsa error from writei: %d\n", rc);
     else if (decodeLen != rc)
-      printf("Alsa shortm write, write %d frames\n", rc);
+      _moonlight_log(WARN,"Alsa shortm write, write %d frames\n", rc);
   } else {
-    printf("Opus error from decode: %d\n", decodeLen);
+    _moonlight_log(ERR, "Opus error from decode: %d\n", decodeLen);
   }
 }
 

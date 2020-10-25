@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "logging.h"
 
 #include "input/evdev.h"
 #include "audio/audio.h"
@@ -29,15 +30,8 @@
 #include <getopt.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include "util.h"
 
-#define MOONLIGHT_PATH "/moonlight"
-#define USER_PATHS "."
-#define DEFAULT_CONFIG_DIR "/.config"
-#define DEFAULT_CACHE_DIR "/.cache"
-
-#define write_config_string(fd, key, value) fprintf(fd, "%s = %s\n", key, value)
-#define write_config_int(fd, key, value) fprintf(fd, "%s = %d\n", key, value)
-#define write_config_bool(fd, key, value) fprintf(fd, "%s = %s\n", key, value ? "true":"false")
 
 bool inputAdded = false;
 
@@ -68,61 +62,11 @@ static struct option long_options[] = {
   {"quitappafter", no_argument, NULL, '1'},
   {"viewonly", no_argument, NULL, '2'},
   {"rotate", required_argument, NULL, '3'},
+  {"logging", no_argument, NULL, '4'},
   {"verbose", no_argument, NULL, 'z'},
   {"debug", no_argument, NULL, 'Z'},
   {0, 0, 0, 0},
 };
-
-char* get_path(char* name, char* extra_data_dirs) {
-  const char *xdg_config_dir = getenv("XDG_CONFIG_DIR");
-  const char *home_dir = getenv("HOME");
-
-  if (access(name, R_OK) != -1) {
-      return name;
-  }
-
-  if (!home_dir) {
-    struct passwd *pw = getpwuid(getuid());
-    home_dir = pw->pw_dir;
-  }
-
-  if (!extra_data_dirs)
-    extra_data_dirs = "/usr/share:/usr/local/share";
-  if (!xdg_config_dir)
-    xdg_config_dir = home_dir;
-
-  char *data_dirs = malloc(strlen(USER_PATHS) + 1 + strlen(xdg_config_dir) + 1 + strlen(home_dir) + 1 + strlen(DEFAULT_CONFIG_DIR) + 1 + strlen(extra_data_dirs) + 2);
-  sprintf(data_dirs, USER_PATHS ":%s:%s/" DEFAULT_CONFIG_DIR ":%s/", xdg_config_dir, home_dir, extra_data_dirs);
-
-  char *path = malloc(strlen(data_dirs)+strlen(MOONLIGHT_PATH)+strlen(name)+2);
-  if (path == NULL) {
-    fprintf(stderr, "Not enough memory\n");
-    exit(-1);
-  }
-
-  char* data_dir = data_dirs;
-  char* end;
-  do {
-    end = strstr(data_dir, ":");
-    int length = end != NULL ? end - data_dir:strlen(data_dir);
-    memcpy(path, data_dir, length);
-    if (path[0] == '/')
-      sprintf(path+length, MOONLIGHT_PATH "/%s", name);
-    else
-      sprintf(path+length, "/%s", name);
-
-    if(access(path, R_OK) != -1) {
-      free(data_dirs);
-      return path;
-    }
-
-    data_dir = end + 1;
-  } while (end != NULL);
-
-  free(data_dirs);
-  free(path);
-  return NULL;
-}
 
 static void parse_argument(int c, char* value, PCONFIGURATION config) {
   switch (c) {
@@ -165,9 +109,13 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
   case 'k':
     config->mapping = get_path(value, getenv("XDG_DATA_DIRS"));
     if (config->mapping == NULL) {
-      fprintf(stderr, "Unable to open custom mapping file: %s\n", value);
+      _moonlight_log(ERR, "Unable to open custom mapping file: %s\n", value);
       exit(-1);
     }
+    break;
+  case '4':
+    config->log_file_enabled = true;
+    initialize_log();
     break;
   case 'l':
     config->sops = false;
@@ -245,7 +193,7 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
 bool config_file_parse(char* filename, PCONFIGURATION config) {
   FILE* fd = fopen(filename, "r");
   if (fd == NULL) {
-    fprintf(stderr, "Can't open configuration file: %s\n", filename);
+    _moonlight_log(ERR, "Can't open configuration file: %s\n", filename);
     return false;
   }
 
@@ -277,7 +225,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
 void config_save(char* filename, PCONFIGURATION config) {
   FILE* fd = fopen(filename, "w");
   if (fd == NULL) {
-    fprintf(stderr, "Can't open configuration file: %s\n", filename);
+    _moonlight_log(ERR, "Can't open configuration file: %s\n", filename);
     exit(EXIT_FAILURE);
   }
 
@@ -338,6 +286,7 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
 
   config->inputsCount = 0;
   config->mapping = get_path("gamecontrollerdb.txt", getenv("XDG_DATA_DIRS"));
+  config->log_file_enabled = false;
   config->key_dir[0] = 0;
 
   char* config_file = get_path("moonlight.conf", "/etc");

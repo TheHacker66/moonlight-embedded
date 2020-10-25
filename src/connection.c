@@ -18,6 +18,7 @@
  */
 
 #include "connection.h"
+#include "logging.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -32,6 +33,7 @@ static void connection_terminated() {
     pthread_kill(main_thread_id, SIGTERM);
 }
 
+//TODO: Parse to logging?
 static void connection_log_message(const char* format, ...) {
   va_list arglist;
   va_start(arglist, format);
@@ -47,10 +49,10 @@ static void rumble(unsigned short controllerNumber, unsigned short lowFreqMotor,
 static void connection_status_update(int status) {
   switch (status) {
     case CONN_STATUS_OKAY:
-      printf("Connection is okay\n");
+      _moonlight_log(INFO,"Connection is okay\n");
       break;
     case CONN_STATUS_POOR:
-      printf("Connection is poor\n");
+      _moonlight_log(INFO,"Connection is poor\n");
       break;
   }
 }

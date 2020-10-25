@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <poll.h>
+#include "../logging.h"
 
 static bool autoadd, debug;
 static struct mapping* defaultMappings;
@@ -59,7 +60,7 @@ void udev_init(bool autoload, struct mapping* mappings, bool verbose, int rotate
   udev = udev_new();
   debug = verbose;
   if (!udev) {
-    fprintf(stderr, "Can't create udev\n");
+    _moonlight_log(ERR, "Can't create udev\n");
     exit(1);
   }
 

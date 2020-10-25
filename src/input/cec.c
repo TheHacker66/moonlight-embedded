@@ -18,7 +18,7 @@
  */
 
 #include <Limelight.h>
-
+#include <logging.h>
 #include <ceccloader.h>
 
 #define KEY_LEFT 0x25
@@ -82,7 +82,7 @@ void cec_init() {
   g_config.deviceTypes.types[0] = CEC_DEVICE_TYPE_PLAYBACK_DEVICE;
 
   if (libcecc_initialise(&g_config, &g_iface, NULL) != 1) {
-    fprintf(stderr, "Failed to initialize libcec interface\n");
+    _moonlight_log(ERR, "Failed to initialize libcec interface\n");
     fflush(stderr);
     return;
   }
@@ -93,7 +93,7 @@ void cec_init() {
   int8_t iDevicesFound = g_iface.find_adapters(g_iface.connection, devices, sizeof(devices) / sizeof(devices), NULL);
 
   if (iDevicesFound <= 0) {
-    fprintf(stderr, "No CEC devices found\n");
+    _moonlight_log(ERR, "No CEC devices found\n");
     fflush(stderr);
     libcecc_destroy(&g_iface);
     return;
@@ -101,7 +101,7 @@ void cec_init() {
 
   strcpy(g_strPort, devices[0].comm);
   if (!g_iface.open(g_iface.connection, g_strPort, 5000)) {
-    fprintf(stderr, "Unable to open the device on port %s\n", g_strPort);
+    _moonlight_log(ERR, "Unable to open the device on port %s\n", g_strPort);
     fflush(stderr);
     libcecc_destroy(&g_iface);
     return;

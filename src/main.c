@@ -53,15 +53,17 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <openssl/rand.h>
+#include "logging.h"
 
 static void applist(PSERVER_DATA server) {
   PAPP_LIST list = NULL;
   if (gs_applist(server, &list) != GS_OK) {
-    fprintf(stderr, "Can't get app list\n");
+    _moonlight_log(ERR, "Can't get app list\n");
     return;
   }
 
   for (int i = 1;list != NULL;i++) {
+    _moonlight_log(INFO, "Can't get app list\n");
     printf("%d. %s\n", i, list->name);
     list = list->next;
   }
@@ -70,7 +72,7 @@ static void applist(PSERVER_DATA server) {
 static int get_app_id(PSERVER_DATA server, const char *name) {
   PAPP_LIST list = NULL;
   if (gs_applist(server, &list) != GS_OK) {
-    fprintf(stderr, "Can't get app list\n");
+    _moonlight_log(ERR, "Can't get app list\n");
     return -1;
   }
 
@@ -86,7 +88,7 @@ static int get_app_id(PSERVER_DATA server, const char *name) {
 static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform system) {
   int appId = get_app_id(server, config->app);
   if (appId<0) {
-    fprintf(stderr, "Can't find app %s\n", config->app);
+    _moonlight_log(ERR, "Can't find app %s\n", config->app);
     exit(-1);
   }
 
@@ -102,15 +104,15 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   int ret = gs_start_app(server, &config->stream, appId, config->sops, config->localaudio, gamepad_mask);
   if (ret < 0) {
     if (ret == GS_NOT_SUPPORTED_4K)
-      fprintf(stderr, "Server doesn't support 4K\n");
+      _moonlight_log(ERR, "Server doesn't support 4K\n");
     else if (ret == GS_NOT_SUPPORTED_MODE)
-      fprintf(stderr, "Server doesn't support %dx%d (%d fps) or try --unsupported option\n", config->stream.width, config->stream.height, config->stream.fps);
+      _moonlight_log(ERR, "Server doesn't support %dx%d (%d fps) or try --unsupported option\n", config->stream.width, config->stream.height, config->stream.fps);
     else if (ret == GS_NOT_SUPPORTED_SOPS_RESOLUTION)
-      fprintf(stderr, "SOPS isn't supported for the resolution %dx%d, use supported resolution or add --nosops option\n", config->stream.width, config->stream.height);
+      _moonlight_log(ERR, "SOPS isn't supported for the resolution %dx%d, use supported resolution or add --nosops option\n", config->stream.width, config->stream.height);
     else if (ret == GS_ERROR)
-      fprintf(stderr, "Gamestream error: %s\n", gs_error);
+      _moonlight_log(ERR, "Gamestream error: %s\n", gs_error);
     else
-      fprintf(stderr, "Errorcode starting app: %d\n", ret);
+      _moonlight_log(ERR, "Errorcode starting app: %d\n", ret);
     exit(-1);
   }
 
@@ -131,7 +133,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   }
 
   if (config->debug_level > 0) {
-    printf("Stream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
+    _moonlight_log(DEBUG, "Stream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
     connection_debug = true;
   }
 
@@ -157,11 +159,13 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 
   if (config->quitappafter) {
     if (config->debug_level > 0)
-      printf("Sending app quit request ...\n");
+      _moonlight_log(DEBUG, "Sending app quit request ...\n");
     gs_quit_app(server);
   }
 
   platform_stop(system);
+
+  close_log();
 }
 
 static void help() {
@@ -224,7 +228,7 @@ static void help() {
 
 static void pair_check(PSERVER_DATA server) {
   if (!server->paired) {
-    fprintf(stderr, "You must pair with the PC first\n");
+    _moonlight_log(ERR, "You must pair with the PC first\n");
     exit(-1);
   }
 }
@@ -237,10 +241,11 @@ int main(int argc, char* argv[]) {
     help();
 
   if (config.debug_level > 0)
-    printf("Moonlight Embedded %d.%d.%d (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, COMPILE_OPTIONS);
+    _moonlight_log(DEBUG, "Moonlight Embedded %d.%d.%d (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, COMPILE_OPTIONS);
 
   if (strcmp("map", config.action) == 0) {
     if (config.inputsCount != 1) {
+      _moonlight_log(ERR, "Mapping a device requires an input device to be specified.\n");
       printf("You need to specify one input device using -input.\n");
       exit(-1);
     }
@@ -257,10 +262,11 @@ int main(int argc, char* argv[]) {
       exit(-1);
     }
     config.address[0] = 0;
+    _moonlight_log(INFO, "Searching for server...\n");
     printf("Searching for server...\n");
     gs_discover_server(config.address);
     if (config.address[0] == 0) {
-      fprintf(stderr, "Autodiscovery failed. Specify an IP address next time.\n");
+      _moonlight_log(ERR, "Autodiscovery failed. Specify an IP address next time.\n");
       exit(-1);
     }
   }
@@ -271,28 +277,29 @@ int main(int argc, char* argv[]) {
     config_file_parse(host_config_file, &config);
 
   SERVER_DATA server;
+  _moonlight_log(INFO, "Connect to %s...\n", config.address);
   printf("Connect to %s...\n", config.address);
 
   int ret;
   if ((ret = gs_init(&server, config.address, config.key_dir, config.debug_level, config.unsupported)) == GS_OUT_OF_MEMORY) {
-    fprintf(stderr, "Not enough memory\n");
+    _moonlight_log(ERR, "Not enough memory\n");
     exit(-1);
   } else if (ret == GS_ERROR) {
-    fprintf(stderr, "Gamestream error: %s\n", gs_error);
+    _moonlight_log(ERR, "Gamestream error: %s\n", gs_error);
     exit(-1);
   } else if (ret == GS_INVALID) {
-    fprintf(stderr, "Invalid data received from server: %s\n", gs_error);
+    _moonlight_log(ERR, "Invalid data received from server: %s\n", gs_error);
     exit(-1);
   } else if (ret == GS_UNSUPPORTED_VERSION) {
-    fprintf(stderr, "Unsupported version: %s\n", gs_error);
+    _moonlight_log(ERR, "Unsupported version: %s\n", gs_error);
     exit(-1);
   } else if (ret != GS_OK) {
-    fprintf(stderr, "Can't connect to server %s\n", config.address);
+    _moonlight_log(ERR, "Can't connect to server %s\n", config.address);
     exit(-1);
   }
 
   if (config.debug_level > 0)
-    printf("NVIDIA %s, GFE %s (%s, %s)\n", server.gpuType, server.serverInfo.serverInfoGfeVersion, server.gsVersion, server.serverInfo.serverInfoAppVersion);
+    _moonlight_log(DEBUG, "NVIDIA %s, GFE %s (%s, %s)\n", server.gpuType, server.serverInfo.serverInfoGfeVersion, server.gsVersion, server.serverInfo.serverInfoAppVersion);
 
   if (strcmp("list", config.action) == 0) {
     pair_check(&server);
@@ -301,13 +308,13 @@ int main(int argc, char* argv[]) {
     pair_check(&server);
     enum platform system = platform_check(config.platform);
     if (config.debug_level > 0)
-      printf("Platform %s\n", platform_name(system));
+      _moonlight_log(DEBUG, "Using platform %s\n", platform_name(system));
 
     if (system == 0) {
-      fprintf(stderr, "Platform '%s' not found\n", config.platform);
+      _moonlight_log(ERR, "Platform '%s' not found\n", config.platform);
       exit(-1);
     } else if (system == SDL && config.audio_device != NULL) {
-      fprintf(stderr, "You can't select a audio device for SDL\n");
+      _moonlight_log(ERR, "You can't select a audio device for SDL\n");
       exit(-1);
     }
     config.stream.supportsHevc = config.codec != CODEC_H264 && (config.codec == CODEC_HEVC || platform_supports_hevc(system));
@@ -319,12 +326,12 @@ int main(int argc, char* argv[]) {
 
     if (config.viewonly) {
       if (config.debug_level > 0)
-        printf("View-only mode enabled, no input will be sent to the host computer\n");
+        _moonlight_log(DEBUG, "View-only mode enabled, no input will be sent to the host computer\n");
     } else {
       if (IS_EMBEDDED(system)) {
         char* mapping_env = getenv("SDL_GAMECONTROLLERCONFIG");
         if (config.mapping == NULL && mapping_env == NULL) {
-          fprintf(stderr, "Please specify mapping file as default mapping could not be found.\n");
+          _moonlight_log(ERR, "Please specify mapping file as default mapping could not be found.\n");
           exit(-1);
         }
 
@@ -356,6 +363,7 @@ int main(int argc, char* argv[]) {
       else if (system == SDL) {
         if (config.inputsCount > 0) {
           fprintf(stderr, "You can't select input devices as SDL will automatically use all available controllers\n");
+          _moonlight_log(ERR, "You can't select input devices as SDL will automatically use all available controllers\n");
           exit(-1);
         }
 
@@ -371,19 +379,21 @@ int main(int argc, char* argv[]) {
     sprintf(pin, "%d%d%d%d", (int)random() % 10, (int)random() % 10, (int)random() % 10, (int)random() % 10);
     printf("Please enter the following PIN on the target PC: %s\n", pin);
     if (gs_pair(&server, &pin[0]) != GS_OK) {
-      fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
+      _moonlight_log(ERR, "Failed to pair to server: %s\n", gs_error);
     } else {
+      _moonlight_log(INFO, "Successfully paired to server.\n");
       printf("Succesfully paired\n");
     }
   } else if (strcmp("unpair", config.action) == 0) {
     if (gs_unpair(&server) != GS_OK) {
-      fprintf(stderr, "Failed to unpair to server: %s\n", gs_error);
+      _moonlight_log(ERR, "Failed to unpair to server: %s\n", gs_error);
     } else {
+      _moonlight_log(INFO, "Successfully unpaired a server.\n");
       printf("Succesfully unpaired\n");
     }
   } else if (strcmp("quit", config.action) == 0) {
     pair_check(&server);
     gs_quit_app(&server);
   } else
-    fprintf(stderr, "%s is not a valid action\n", config.action);
+    _moonlight_log(ERR, "%s is not a valid action\n", config.action);
 }
