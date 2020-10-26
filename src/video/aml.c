@@ -31,14 +31,19 @@
 #include <codec.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
+#include <fcntl.h>
 #include "../logging.h"
 
 #define SYNC_OUTSIDE 0x02
 #define UCODE_IP_ONLY_PARAM 0x08
-#define DECODER_BUFFER_SIZE 92*1024
+#define DECODER_BUFFER_SIZE 120*1024
 
 static codec_para_t codecParam = { 0 };
 static char* frame_buffer;
+
+time_t lastMeasuredTime;
+int lastFrameNumber = -1, droppedFrames = 0, totalFrames = 0, nfis = 0, hFPS = -1, lFPS = 1000, avgFPS = -1;
 
 int aml_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   codecParam.stream_type = STREAM_TYPE_ES_VIDEO;
@@ -101,10 +106,46 @@ int aml_setup(int videoFormat, int width, int height, int redrawRate, void* cont
 void aml_cleanup() {
   codec_close(&codecParam);
   free(frame_buffer);
+
+  // HACK: Write amlogic decoder stats here.
+
+  FILE* stats = fopen("aml_decoder.stats", "w");
+  int stream_status = 1;
+  if (lFPS == 1000 || avgFPS == -1) {
+    lFPS = -1;
+    stream_status = -1;
+  }
+  fprintf(stats, "StreamStatus = %i", stream_status);
+  fprintf(stats, "AverageFPS = %i\n", avgFPS);
+  fprintf(stats, "LowestFPS = %i\n", lFPS);
+  fprintf(stats, "HighestFPS = %i\n", hFPS);
+  fprintf(stats, "NetworkDroppedFrames = %i\n", droppedFrames);
+  fclose(stats);
+
 }
 
 int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   int result = DR_OK, api, length = 0;
+
+  lastFrameNumber = decodeUnit->frameNumber;
+  if (time(NULL) - lastMeasuredTime >= 1) {
+    if (nfis > 0) {
+      avgFPS = nfis / (time(NULL) - lastMeasuredTime);
+      if (nfis < lFPS)
+        lFPS = nfis;
+      if (nfis > hFPS)
+        hFPS = nfis;
+    }
+    nfis = 0;
+    lastMeasuredTime = time(NULL);
+  }
+  
+  if (decodeUnit->frameNumber != lastFrameNumber && decodeUnit->frameNumber != lastFrameNumber+1) {
+    droppedFrames += decodeUnit->frameNumber - lastFrameNumber - 1;
+  }
+  totalFrames++;
+  nfis++;
+
   if (decodeUnit->fullLength < DECODER_BUFFER_SIZE) {
     PLENTRY entry = decodeUnit->bufferList;
     while (entry != NULL) {
@@ -117,6 +158,7 @@ int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
       if (api < 0) {
         if (errno != EAGAIN) {
           _moonlight_log(ERR, "codec_write error: %x %d\n", api, errno);
+          droppedFrames += 1;
           codec_reset(&codecParam);
           result = DR_NEED_IDR;
           break;
@@ -129,7 +171,7 @@ int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     }
     
   } else {
-    _moonlight_log(ERR, "Video decode buffer too small\n");
+    _moonlight_log(ERR, "Video decode buffer too small, %i < %i\n", decodeUnit->fullLength, DECODER_BUFFER_SIZE);
     exit(1);
   }
   return result;
