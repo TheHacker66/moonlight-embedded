@@ -51,5 +51,6 @@ void _moonlight_log(enum LOG_TYPE type, char* format, ...) {
 }
 
 void close_log() {
-    fclose(log_file);
+    if (log_file != NULL)
+    	fclose(log_file);
 }
