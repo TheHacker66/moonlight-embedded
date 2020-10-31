@@ -43,7 +43,7 @@ static codec_para_t codecParam = { 0 };
 static char* frame_buffer;
 
 time_t lastMeasuredTime;
-int lastFrameNumber = -1, droppedFrames = 0, totalFrames = 0, nfis = 0, hFPS = -1, lFPS = 1000, avgFPS = -1;
+int lastFrameNumber = -1, droppedFrames = 0, totalFrames = 0, nfis = 0, hFPS = -1, lFPS = 1000, avgFPS = -1, decodeTime = -1, avgDec = -1;
 
 int aml_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   codecParam.stream_type = STREAM_TYPE_ES_VIDEO;
@@ -115,38 +115,44 @@ void aml_cleanup() {
     lFPS = -1;
     stream_status = -1;
   }
-  fprintf(stats, "StreamStatus = %i", stream_status);
+  fprintf(stats, "StreamStatus = %i\n", stream_status);
   fprintf(stats, "AverageFPS = %i\n", avgFPS);
   fprintf(stats, "LowestFPS = %i\n", lFPS);
   fprintf(stats, "HighestFPS = %i\n", hFPS);
   fprintf(stats, "NetworkDroppedFrames = %i\n", droppedFrames);
+  fprintf(stats, "AvgDecodingTime = %d us", avgDec);
   fclose(stats);
-
 }
 
+struct timespec start, lastMeasure, end;
 int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   int result = DR_OK, api, length = 0;
 
-  lastFrameNumber = decodeUnit->frameNumber;
-  if (time(NULL) - lastMeasuredTime >= 1) {
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  if (lastMeasure.tv_nsec == 0 || (start.tv_sec - lastMeasure.tv_sec) >= 1) {
     if (nfis > 0) {
-      avgFPS = nfis / (time(NULL) - lastMeasuredTime);
+      avgFPS = nfis / (start.tv_sec - lastMeasure.tv_sec);
+      avgDec = decodeTime / nfis;
       if (nfis < lFPS)
         lFPS = nfis;
       if (nfis > hFPS)
         hFPS = nfis;
     }
     nfis = 0;
-    lastMeasuredTime = time(NULL);
+    decodeTime = 0;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &lastMeasure);
   }
   
   if (decodeUnit->frameNumber != lastFrameNumber && decodeUnit->frameNumber != lastFrameNumber+1) {
-    droppedFrames += decodeUnit->frameNumber - lastFrameNumber - 1;
+    int framesDropped = decodeUnit->frameNumber - lastFrameNumber - 1;
+    droppedFrames += framesDropped;
+    _moonlight_log(WARN,"Dropped %d frames!\n", framesDropped);
   }
+  lastFrameNumber = decodeUnit->frameNumber;
   totalFrames++;
   nfis++;
 
-  if (decodeUnit->fullLength < DECODER_BUFFER_SIZE) {
+  if (decodeUnit->fullLength > 0 && decodeUnit->fullLength < DECODER_BUFFER_SIZE) {
     PLENTRY entry = decodeUnit->bufferList;
     while (entry != NULL) {
       memcpy(frame_buffer+length, entry->data, entry->length);
@@ -164,16 +170,18 @@ int aml_submit_decode_unit(PDECODE_UNIT decodeUnit) {
           break;
         } else {
           _moonlight_log(ERR, "EAGAIN triggered, trying again...\n");
+          usleep(5000);
           continue;
         }
       }
       break;
     }
-    
   } else {
     _moonlight_log(ERR, "Video decode buffer too small, %i < %i\n", decodeUnit->fullLength, DECODER_BUFFER_SIZE);
     exit(1);
   }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  decodeTime += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
   return result;
 }
 
