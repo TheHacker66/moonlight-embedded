@@ -43,7 +43,7 @@ void _moonlight_log(enum LOG_TYPE type, char* format, ...) {
     va_list args;
 
     FILE * file = (log_file == NULL) ? stderr : log_file;
-    fprintf(file, "[%s] [%s] ", __TIMESTAMP__, log_type_str[type]);
+    fprintf(file, "[%s] ", log_type_str[type]);
 
     va_start(args, format);
     vfprintf(file, format, args);
