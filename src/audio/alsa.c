@@ -78,7 +78,7 @@ static int alsa_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGUR
   CHECK_RETURN(snd_pcm_sw_params_malloc(&sw_params));
   CHECK_RETURN(snd_pcm_sw_params_current(handle, sw_params));
   CHECK_RETURN(snd_pcm_sw_params_set_avail_min(handle, sw_params, period_size));
-  CHECK_RETURN(snd_pcm_sw_params_set_start_threshold(handle, sw_params, 1));
+  CHECK_RETURN(snd_pcm_sw_params_set_start_threshold(handle, sw_params, buffer_size));
   CHECK_RETURN(snd_pcm_sw_params(handle, sw_params));
   snd_pcm_sw_params_free(sw_params);
 
