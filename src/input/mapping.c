@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include "../logging.h"
 
 struct mapping* mapping_parse(char* mapping) {
   char* strpoint;
@@ -33,7 +34,7 @@ struct mapping* mapping_parse(char* mapping) {
 
   struct mapping* map = malloc(sizeof(struct mapping));
   if (map == NULL) {
-    fprintf(stderr, "Not enough memory");
+    _moonlight_log(ERR, "Not enough memory");
     exit(EXIT_FAILURE);
   }
 
@@ -117,9 +118,9 @@ struct mapping* mapping_parse(char* mapping) {
           map->hat_dir_dpdown = direction_value;
         }
       } else
-        fprintf(stderr, "Can't map (%s)\n", option);
+        _moonlight_log(ERR, "Can't map (%s)\n", option);
     } else if (ret == 0 && option[0] != '\n')
-      fprintf(stderr, "Can't map (%s)\n", option);
+      _moonlight_log(ERR, "Can't map (%s)\n", option);
 
     if (key != NULL)
       free(key);
@@ -137,10 +138,12 @@ struct mapping* mapping_load(char* fileName, bool verbose) {
   struct mapping* mappings = NULL;
   FILE* fd = fopen(fileName, "r");
   if (fd == NULL) {
-    fprintf(stderr, "Can't open mapping file: %s\n", fileName);
+    _moonlight_log(ERR, "Can't open mapping file: %s\n", fileName);
     exit(EXIT_FAILURE);
-  } else if (verbose)
+  } else if (verbose) {
+    _moonlight_log(INFO, "Loading mappingfile %s\n", fileName);
     printf("Loading mappingfile %s\n", fileName);
+  }
 
   char *line = NULL;
   size_t len = 0;
@@ -156,12 +159,12 @@ struct mapping* mapping_load(char* fileName, bool verbose) {
   return mappings;
 }
 
-#define print_btn(btn, code) if (code > -1) printf("%s:b%d,", btn, code)
-#define print_abs(abs, code) if (code > -1) printf("%s:a%d,", abs, code)
-#define print_hat(hat, code, dir) if (code > -1) printf("%s:h%d.%d,", hat, code, dir)
+#define print_btn(btn, code) if (code > -1) _moonlight_log(INFO, "%s:b%d,", btn, code)
+#define print_abs(abs, code) if (code > -1) _moonlight_log(INFO, "%s:a%d,", abs, code)
+#define print_hat(hat, code, dir) if (code > -1) _moonlight_log(INFO, "%s:h%d.%d,", hat, code, dir)
 
 void mapping_print(struct mapping* map) {
-  printf("%s,%s,", map->guid, map->name);
+  _moonlight_log(INFO, "%s,%s,", map->guid, map->name);
   print_btn("a", map->btn_a);
   print_btn("b", map->btn_b);
   print_btn("x", map->btn_x);
@@ -189,5 +192,5 @@ void mapping_print(struct mapping* map) {
   print_abs("righttrigger", map->abs_righttrigger);
   print_btn("lefttrigger", map->btn_lefttrigger);
   print_btn("righttrigger", map->btn_righttrigger);
-  printf("platform:Linux\n");
+  _moonlight_log(INFO, "platform:Linux\n");
 }

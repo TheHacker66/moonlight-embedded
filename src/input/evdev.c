@@ -22,6 +22,7 @@
 #include "keyboard.h"
 
 #include "../loop.h"
+#include "../logging.h"
 
 #include "libevdev/libevdev.h"
 #include <Limelight.h>
@@ -145,12 +146,12 @@ static void evdev_remove(int devindex) {
   if (devindex != numDevices && numDevices > 0)
     memcpy(&devices[devindex], &devices[numDevices], sizeof(struct input_device));
 
-  fprintf(stderr, "Removed input device\n");
+  _moonlight_log(ERR, "Removed input device\n");
 }
 
 static short evdev_convert_value(struct input_event *ev, struct input_device *dev, struct input_abs_parms *parms, bool reverse) {
   if (parms->max == 0 && parms->min == 0) {
-    fprintf(stderr, "Axis not found: %d\n", ev->code);
+    _moonlight_log(ERR, "Axis not found: %d\n", ev->code);
     return 0;
   }
 
@@ -168,7 +169,7 @@ static short evdev_convert_value(struct input_event *ev, struct input_device *de
 
 static char evdev_convert_value_byte(struct input_event *ev, struct input_device *dev, struct input_abs_parms *parms) {
   if (parms->max == 0 && parms->min == 0) {
-    fprintf(stderr, "Axis not found: %d\n", ev->code);
+    _moonlight_log(ERR, "Axis not found: %d\n", ev->code);
     return 0;
   }
 
@@ -352,7 +353,7 @@ static bool evdev_handle_event(struct input_event *ev, struct input_device *dev)
         dev->rightTrigger = ev->value ? UCHAR_MAX : 0;
       else {
         if (dev->map != NULL)
-          fprintf(stderr, "Unmapped button: %d\n", ev->code);
+          _moonlight_log(ERR, "Unmapped button: %d\n", ev->code);
 
         gamepadModified = false;
       }
@@ -505,7 +506,7 @@ static int evdev_handle(int fd) {
       struct input_event ev;
       while ((rc = libevdev_next_event(devices[i].dev, LIBEVDEV_READ_FLAG_NORMAL, &ev)) >= 0) {
         if (rc == LIBEVDEV_READ_STATUS_SYNC)
-          fprintf(stderr, "Error: cannot keep up\n");
+          _moonlight_log(ERR, "Error: cannot keep up\n");
         else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
           if (!handler(&ev, &devices[i]))
             return LOOP_RETURN;
@@ -514,7 +515,7 @@ static int evdev_handle(int fd) {
       if (rc == -ENODEV) {
         evdev_remove(i);
       } else if (rc != -EAGAIN && rc < 0) {
-        fprintf(stderr, "Error: %s\n", strerror(-rc));
+        _moonlight_log(ERR, "Error: %s\n", strerror(-rc));
         exit(EXIT_FAILURE);
       }
     }
@@ -525,7 +526,7 @@ static int evdev_handle(int fd) {
 void evdev_create(const char* device, struct mapping* mappings, bool verbose, int rotate) {
   int fd = open(device, O_RDWR|O_NONBLOCK);
   if (fd <= 0) {
-    fprintf(stderr, "Failed to open device %s\n", device);
+    _moonlight_log(ERR, "Failed to open device %s\n", device);
     fflush(stderr);
     return;
   }
@@ -555,7 +556,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose, in
   while (mappings != NULL) {
     if (strncmp(str_guid, mappings->guid, 32) == 0) {
       if (verbose)
-        printf("Detected %s (%s) on %s as %s\n", name, str_guid, device, mappings->name);
+        _moonlight_log(INFO, "Detected %s (%s) on %s as %s\n", name, str_guid, device, mappings->name);
 
       break;
     } else if (strncmp("default", mappings->guid, 32) == 0)
@@ -574,7 +575,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose, in
   bool is_touchscreen = libevdev_has_event_code(evdev, EV_KEY, BTN_TOUCH);
 
   if (mappings == NULL && !(is_keyboard || is_mouse || is_touchscreen)) {
-    fprintf(stderr, "No mapping available for %s (%s) on %s\n", name, str_guid, device);
+    _moonlight_log(ERR, "No mapping available for %s (%s) on %s\n", name, str_guid, device);
     mappings = default_mapping;
   }
 
@@ -591,7 +592,7 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose, in
   }
 
   if (devices == NULL) {
-    fprintf(stderr, "Not enough memory\n");
+    _moonlight_log(ERR, "Not enough memory\n");
     exit(EXIT_FAILURE);
   }
 
@@ -638,12 +639,12 @@ void evdev_create(const char* device, struct mapping* mappings, bool verbose, in
     valid &= evdev_init_parms(&devices[dev], &(devices[dev].ryParms), devices[dev].map->abs_righty);
     valid &= evdev_init_parms(&devices[dev], &(devices[dev].rzParms), devices[dev].map->abs_righttrigger);
     if (!valid)
-      fprintf(stderr, "Mapping for %s (%s) on %s is incorrect\n", name, str_guid, device);
+      _moonlight_log(ERR, "Mapping for %s (%s) on %s is incorrect\n", name, str_guid, device);
   }
 
   if (grabbingDevices && (is_keyboard || is_mouse || is_touchscreen)) {
     if (ioctl(fd, EVIOCGRAB, 1) < 0) {
-      fprintf(stderr, "EVIOCGRAB failed with error %d\n", errno);
+      _moonlight_log(ERR, "EVIOCGRAB failed with error %d\n", errno);
     }
   }
 
@@ -769,7 +770,7 @@ void evdev_start() {
   // this point.
   for (int i = 0; i < numDevices; i++) {
     if ((devices[i].is_keyboard || devices[i].is_mouse || devices[i].is_touchscreen) && ioctl(devices[i].fd, EVIOCGRAB, 1) < 0) {
-      fprintf(stderr, "EVIOCGRAB failed with error %d\n", errno);
+      _moonlight_log(ERR, "EVIOCGRAB failed with error %d\n", errno);
     }
   }
 

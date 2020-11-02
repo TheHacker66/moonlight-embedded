@@ -1,7 +1,7 @@
 /*
  * This file is part of Moonlight Embedded.
  *
- * Copyright (C) 2017 Iwan Timmer
+ * Copyright (C) 2020 TheChoconut
  *
  * Moonlight is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,21 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
+#define FOREACH_LOG_TYPE(LOG_TYPE) \
+        LOG_TYPE(ERR)   \
+        LOG_TYPE(WARN)  \
+        LOG_TYPE(INFO)   \
+        LOG_TYPE(DEBUG)  \
 
-#define MOONLIGHT_PATH "/moonlight"
-#define USER_PATHS "."
-#define DEFAULT_CONFIG_DIR "/.config"
-#define DEFAULT_CACHE_DIR "/.cache"
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
 
-#define write_config_string(fd, key, value) fprintf(fd, "%s = %s\n", key, value)
-#define write_config_int(fd, key, value) fprintf(fd, "%s = %d\n", key, value)
-#define write_config_bool(fd, key, value) fprintf(fd, "%s = %s\n", key, value ? "true":"false")
+enum LOG_TYPE { ERR, WARN, INFO, DEBUG };
 
-int blank_fb(char *path, bool clear);
+static const char *log_type_str[] = {
+    FOREACH_LOG_TYPE(GENERATE_STRING)
+};
 
-int set_disable_video_flag(char *path, bool disabled);
-char* get_path(char* name, char* extra_data_dirs);
+void initialize_log();
+void close_log();
+void _moonlight_log(enum LOG_TYPE type, char* format, ...);

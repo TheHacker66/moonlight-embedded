@@ -65,7 +65,7 @@ static void init_gamepad(int joystick_index) {
     sdl_gamepads++;
     SDL_GameController* controller = SDL_GameControllerOpen(joystick_index);
     if (!controller) {
-      fprintf(stderr, "Could not open gamecontroller %i: %s\n", joystick_index, SDL_GetError());
+      _moonlight_log(ERR, "Could not open gamecontroller %i: %s\n", joystick_index, SDL_GetError());
       return;
     }
 

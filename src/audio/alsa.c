@@ -20,10 +20,11 @@
 #include "audio.h"
 
 #include <stdio.h>
+#include "../logging.h"
 #include <opus_multistream.h>
 #include <alsa/asoundlib.h>
 
-#define CHECK_RETURN(f) if ((rc = f) < 0) { printf("Alsa error code %d\n", rc); return -1; }
+#define CHECK_RETURN(f) if ((rc = f) < 0) { _moonlight_log(ERR, "Alsa error code %d\n", rc); return -1; }
 
 static snd_pcm_t *handle;
 static OpusMSDecoder* decoder;
@@ -77,7 +78,7 @@ static int alsa_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGUR
   CHECK_RETURN(snd_pcm_sw_params_malloc(&sw_params));
   CHECK_RETURN(snd_pcm_sw_params_current(handle, sw_params));
   CHECK_RETURN(snd_pcm_sw_params_set_avail_min(handle, sw_params, period_size));
-  CHECK_RETURN(snd_pcm_sw_params_set_start_threshold(handle, sw_params, 1));
+  CHECK_RETURN(snd_pcm_sw_params_set_start_threshold(handle, sw_params, buffer_size));
   CHECK_RETURN(snd_pcm_sw_params(handle, sw_params));
   snd_pcm_sw_params_free(sw_params);
 
@@ -104,11 +105,11 @@ static void alsa_renderer_decode_and_play_sample(char* data, int length) {
       snd_pcm_recover(handle, rc, 1);
 
     if (rc<0)
-      printf("Alsa error from writei: %d\n", rc);
+      _moonlight_log(ERR, "Alsa error from writei: %d\n", rc);
     else if (decodeLen != rc)
-      printf("Alsa shortm write, write %d frames\n", rc);
+      _moonlight_log(WARN,"Alsa shortm write, write %d frames\n", rc);
   } else {
-    printf("Opus error from decode: %d\n", decodeLen);
+    _moonlight_log(ERR, "Opus error from decode: %d\n", decodeLen);
   }
 }
 

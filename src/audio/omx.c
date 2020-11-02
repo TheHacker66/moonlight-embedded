@@ -24,6 +24,7 @@
 #include <opus_multistream.h>
 #include "bcm_host.h"
 #include "ilclient.h"
+#include "../logging.h"
 
 static OpusMSDecoder* decoder;
 ILCLIENT_T* handle;
@@ -53,17 +54,17 @@ static int omx_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
 
   handle = ilclient_init();
   if (handle == NULL) {
-    fprintf(stderr, "IL client init failed\n");
+    _moonlight_log(ERR, "IL client init failed\n");
     return -1;
   }
 
   if (ilclient_create_component(handle, &component, componentName, ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
-    fprintf(stderr, "Component create failed\n");
+    _moonlight_log(ERR, "Component create failed\n");
     return -1;
   }
 
   if (ilclient_change_component_state(component, OMX_StateIdle)!= 0) {
-    fprintf(stderr, "Couldn't change state to Idle\n");
+    _moonlight_log(ERR, "Couldn't change state to Idle\n");
     return -1;
   }
 
@@ -118,7 +119,7 @@ static int omx_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
 
   err = OMX_SetParameter(ilclient_get_handle(component), OMX_IndexParamAudioPcm, &sPCMMode);
   if(err != OMX_ErrorNone){
-    fprintf(stderr, "PCM mode unsupported\n");
+    _moonlight_log(ERR, "PCM mode unsupported\n");
     return -1;
   }
   OMX_CONFIG_BRCMAUDIODESTINATIONTYPE arDest;
@@ -136,7 +137,7 @@ static int omx_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
 
     err = OMX_SetParameter(ilclient_get_handle(component), OMX_IndexConfigBrcmAudioDestination, &arDest);
     if (err != OMX_ErrorNone) {
-      fprintf(stderr, "Error on setting audio destination\nomx option must be set to hdmi or local\n");
+      _moonlight_log(ERR, "Error on setting audio destination\nomx option must be set to hdmi or local\n");
       return -1;
     }
   }
@@ -147,7 +148,7 @@ static int omx_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
 
   err = ilclient_change_component_state(component, OMX_StateExecuting);
   if (err < 0) {
-    fprintf(stderr, "Couldn't change state to Executing\n");
+    _moonlight_log(ERR, "Couldn't change state to Executing\n");
     return -1;
   }
 
@@ -159,7 +160,7 @@ static void omx_renderer_cleanup() {
     opus_multistream_decoder_destroy(decoder);
   if (handle != NULL) {
     if((buf = ilclient_get_input_buffer(component, 100, 1)) == NULL){
-      fprintf(stderr, "Can't get audio buffer\n");
+      _moonlight_log(ERR, "Can't get audio buffer\n");
       exit(EXIT_FAILURE);
     }
 
@@ -167,7 +168,7 @@ static void omx_renderer_cleanup() {
     buf->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN | OMX_BUFFERFLAG_EOS;
 
     if(OMX_EmptyThisBuffer(ILC_GET_HANDLE(component), buf) != OMX_ErrorNone){
-      fprintf(stderr, "Can't empty audio buffer\n");
+      _moonlight_log(ERR, "Can't empty audio buffer\n");
       return;
     }
 
@@ -188,10 +189,10 @@ static void omx_renderer_decode_and_play_sample(char* data, int length) {
     buf->nFilledLen = bufLength;
     int r = OMX_EmptyThisBuffer(ilclient_get_handle(component), buf);
     if (r != OMX_ErrorNone) {
-      fprintf(stderr, "Empty buffer error\n");
+      _moonlight_log(ERR, "Empty buffer error\n");
     }
   } else {
-    printf("Opus error from decode: %d\n", decodeLen);
+    _moonlight_log(ERR, "Opus error from decode: %d\n", decodeLen);
   }
 }
 
